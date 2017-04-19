@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 //import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Predicate;
 
 
 import com.amazonaws.services.lambda.runtime.Context;
@@ -27,8 +28,8 @@ public class RssMerger {
 
     private final ExecutorService executor = Executors.newFixedThreadPool(100);
     private final SyndEntryComparator syndEntryComparator = new SyndEntryComparator();
-    private final int individualFeedConnectWaitTime = 1000;
-    private final int individualFeedReadWaitTime = 2000;
+    private final int individualFeedConnectWaitTime = Integer.parseInt(System.getenv("individualFeedConnectWaitTime"));
+    private final int individualFeedReadWaitTime = Integer.parseInt(System.getenv("individualFeedReadWaitTime"));
     private final int allFeedsWaitTime = individualFeedConnectWaitTime + individualFeedReadWaitTime + 100;
     private final String outputFeedType = "rss_2.0";
     private final int maxElementsPerFeed = 5;
@@ -46,7 +47,7 @@ public class RssMerger {
         return feeds;
     }
 
-    private SyndFeed process(Iterable<String> feedUrls) throws InterruptedException {
+    public SyndFeed process(Iterable<String> feedUrls) throws InterruptedException {
         Iterable<SyndFeed> inputFeeds = collectFeeds(feedUrls);
 
         SyndFeed feed = new SyndFeedImpl();
@@ -61,12 +62,21 @@ public class RssMerger {
 
         for (SyndFeed inputFeed: inputFeeds) {
             List<SyndEntry> inputEntries = inputFeed.getEntries();
+            inputEntries.removeIf(
+                    syndEntry -> syndEntry.getPublishedDate() == null && syndEntry.getUpdatedDate() == null
+            );
             inputEntries.sort(syndEntryComparator);
-            entries.addAll(inputEntries.subList(0, maxElementsPerFeed));
+            if(inputEntries.size() > maxElementsPerFeed) {
+                inputEntries = inputEntries.subList(0, maxElementsPerFeed);
+            }
+            entries.addAll(inputEntries);
         }
 
         entries.sort(syndEntryComparator);
-        feed.setEntries(entries.subList(0, maxElementsFinalFeed));
+        if(entries.size() > maxElementsFinalFeed) {
+            entries = entries.subList(0, maxElementsFinalFeed);
+        }
+        feed.setEntries(entries);
         return feed;
     }
 
@@ -93,9 +103,9 @@ public class RssMerger {
                 httpcon.setReadTimeout(individualFeedReadWaitTime);
                 // Reading the feed
                 SyndFeedInput input = new SyndFeedInput();
-//                System.out.println("Getting output of " + url);
+                System.out.println("Getting output of " + url);
                 feeds.add(input.build(new XmlReader(httpcon)));
-//                System.out.println("Got output of " + url);
+                System.out.println("Got output of " + url);
             }
             catch(Exception ignored) {
                 System.out.println(ignored);

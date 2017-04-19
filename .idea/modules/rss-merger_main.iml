@@ -11,8 +11,28 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="Gradle: com.rometools:rome:1.7.1" level="project" />
     <orderEntry type="library" name="Gradle: com.amazonaws:aws-lambda-java-core:1.1.0" level="project" />
+    <orderEntry type="library" name="Gradle: com.amazonaws:aws-lambda-java-events:1.1.0" level="project" />
     <orderEntry type="library" name="Gradle: com.rometools:rome-utils:1.7.1" level="project" />
     <orderEntry type="library" name="Gradle: org.jdom:jdom2:2.0.6" level="project" />
     <orderEntry type="library" name="Gradle: org.slf4j:slf4j-api:1.7.16" level="project" />
+    <orderEntry type="library" name="Gradle: com.amazonaws:aws-java-sdk-s3:1.11.119" level="project" />
+    <orderEntry type="library" name="Gradle: com.amazonaws:aws-java-sdk-sns:1.11.119" level="project" />
+    <orderEntry type="library" name="Gradle: com.amazonaws:aws-java-sdk-cognitoidentity:1.11.119" level="project" />
+    <orderEntry type="library" name="Gradle: com.amazonaws:aws-java-sdk-kinesis:1.11.119" level="project" />
+    <orderEntry type="library" name="Gradle: com.amazonaws:aws-java-sdk-dynamodb:1.11.119" level="project" />
+    <orderEntry type="library" name="Gradle: com.amazonaws:aws-java-sdk-kms:1.11.119" level="project" />
+    <orderEntry type="library" name="Gradle: com.amazonaws:aws-java-sdk-core:1.11.119" level="project" />
+    <orderEntry type="library" name="Gradle: com.amazonaws:jmespath-java:1.11.119" level="project" />
+    <orderEntry type="library" name="Gradle: com.amazonaws:aws-java-sdk-sqs:1.11.119" level="project" />
+    <orderEntry type="library" name="Gradle: org.apache.httpcomponents:httpclient:4.5.2" level="project" />
+    <orderEntry type="library" name="Gradle: software.amazon.ion:ion-java:1.0.2" level="project" />
+    <orderEntry type="library" name="Gradle: com.fasterxml.jackson.core:jackson-databind:2.6.6" level="project" />
+    <orderEntry type="library" name="Gradle: com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.6.6" level="project" />
+    <orderEntry type="library" name="Gradle: joda-time:joda-time:2.8.1" level="project" />
+    <orderEntry type="library" name="Gradle: org.apache.httpcomponents:httpcore:4.4.4" level="project" />
+    <orderEntry type="library" name="Gradle: commons-codec:commons-codec:1.9" level="project" />
+    <orderEntry type="library" name="Gradle: com.fasterxml.jackson.core:jackson-annotations:2.6.0" level="project" />
+    <orderEntry type="library" name="Gradle: com.fasterxml.jackson.core:jackson-core:2.6.6" level="project" />
+    <orderEntry type="library" name="Gradle: commons-logging:commons-logging:1.2" level="project" />
   </component>
 </module>

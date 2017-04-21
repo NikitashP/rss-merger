@@ -6,6 +6,7 @@ package in.kcrob.testlambda;
 
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.s3.AmazonS3Client;
 import com.rometools.rome.feed.synd.SyndFeed;
 import com.rometools.rome.io.SyndFeedOutput;
 import in.kcrob.RssMerger;
@@ -32,6 +33,9 @@ public class TestLambda implements RequestHandler<Map<String,Object>, Response> 
 
         String out = stream.toString();
         System.out.println("returning " + out);
+
+        AmazonS3 s3Client = new AmazonS3Client();
+        s3Client.putObject("in.kcrob.rss", "tech", out);
         return new Response(200, out);
     }
 

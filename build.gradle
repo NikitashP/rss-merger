@@ -23,8 +23,9 @@ repositories {
 apply plugin: "eu.appsatori.fatjar"
 
 dependencies {
-    //For HTTP
+    //For HTTP Jersey and NettyConnector
     compile group: 'org.glassfish.jersey.ext.rx', name: 'jersey-rx-client-rxjava', version: '2.25.1'
+    compile group: 'org.glassfish.jersey.containers', name: 'jersey-container-netty-http', version: '2.25.1'
 
     //For RSS Parsing
     compile group: 'com.rometools', name: 'rome', version: '1.7.1'

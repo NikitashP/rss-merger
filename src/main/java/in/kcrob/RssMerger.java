@@ -7,6 +7,7 @@ import com.rometools.rome.io.SyndFeedInput;
 import com.rometools.rome.io.SyndFeedOutput;
 import com.rometools.rome.io.XmlReader;
 
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -19,6 +20,15 @@ import java.util.function.Predicate;
 
 
 import com.amazonaws.services.lambda.runtime.Context;
+import org.glassfish.jersey.client.ClientConfig;
+import org.glassfish.jersey.client.rx.RxClient;
+import org.glassfish.jersey.client.rx.rxjava.RxObservable;
+import org.glassfish.jersey.client.rx.rxjava.RxObservableInvoker;
+import org.glassfish.jersey.netty.connector.NettyConnectorProvider;
+import rx.*;
+
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.core.Response;
 
 /**
  * Created by robin on 29/03/17.
@@ -30,10 +40,15 @@ public class RssMerger {
     private final SyndEntryComparator syndEntryComparator = new SyndEntryComparator();
     private final int individualFeedConnectWaitTime = Integer.parseInt(System.getenv("individualFeedConnectWaitTime"));
     private final int individualFeedReadWaitTime = Integer.parseInt(System.getenv("individualFeedReadWaitTime"));
-    private final int allFeedsWaitTime = individualFeedConnectWaitTime + individualFeedReadWaitTime + 100;
+    private final int allFeedsWaitTime = individualFeedConnectWaitTime + individualFeedReadWaitTime + 10000;
     private final String outputFeedType = "rss_2.0";
     private final int maxElementsPerFeed = 5;
     private final int maxElementsFinalFeed = 25;
+    private final ClientConfig clientConfig = new ClientConfig().connectorProvider(new NettyConnectorProvider());
+    private final RxClient<RxObservableInvoker> rxObservableInvokerRxClient = RxObservable.from(
+            ClientBuilder.newClient(clientConfig)
+    );
+
 
     private Iterable<SyndFeed> collectFeeds(Iterable<String> feedUrls) throws InterruptedException {
         Queue<SyndFeed> feeds = new ConcurrentLinkedQueue<SyndFeed>();
@@ -95,25 +110,18 @@ public class RssMerger {
 
         @Override
         public void run() {
-            HttpURLConnection httpcon = null;
-            try {
-                URL url = new URL(this.url);
-                httpcon = (HttpURLConnection) url.openConnection();
-                httpcon.setConnectTimeout(individualFeedConnectWaitTime);
-                httpcon.setReadTimeout(individualFeedReadWaitTime);
-                // Reading the feed
+            try{
+                rx.Observable<InputStream> responseObservable = rxObservableInvokerRxClient
+                        .target(url)
+                        .request()
+                        .rx()
+                        .get(InputStream.class);
+                InputStream inputStream = responseObservable.toBlocking().first();
                 SyndFeedInput input = new SyndFeedInput();
-                System.out.println("Getting output of " + url);
-                feeds.add(input.build(new XmlReader(httpcon)));
-                System.out.println("Got output of " + url);
+                feeds.add(input.build(new XmlReader(inputStream)));
             }
-            catch(Exception ignored) {
+            catch (Exception ignored) {
                 System.out.println(ignored);
-            }
-            finally {
-                if(httpcon != null) {
-                    httpcon.disconnect();
-                }
             }
         }
     }
@@ -139,19 +147,19 @@ public class RssMerger {
         RssMerger self = new RssMerger();
         String[] feedUrls = {
                 "http://comicfeeds.chrisbenard.net/view/dilbert/default",
-                        "https://jvns.ca/atom.xml",
-                        "http://rystsov.info/feed.xml",
-                        "https://martinfowler.com/feed.atom",
-                        "http://feeds.feedburner.com/UdiDahan-TheSoftwareSimplist",
-                        "http://www.charlespetzold.com/rss.xml",
-                        "https://8thlight.com/blog/feed/rss.xml",
-                        "https://githubengineering.com/atom.xml",
-                        "https://engineering.linkedin.com/blog.rss",
-                        "http://antirez.com/rss",
-                        "http://www.michaelnygard.com/atom.xml",
-                        "http://psy-lob-saw.blogspot.com/feeds/posts/default?alt=rss",
-                        "http://brendangregg.com/blog/rss.xml",
-                        "http://the-paper-trail.org/blog/feed/"
+                "https://jvns.ca/atom.xml",
+                "http://rystsov.info/feed.xml",
+                "https://martinfowler.com/feed.atom",
+                "http://feeds.feedburner.com/UdiDahan-TheSoftwareSimplist",
+                "http://www.charlespetzold.com/rss.xml",
+                "https://8thlight.com/blog/feed/rss.xml",
+                "https://githubengineering.com/atom.xml",
+                "https://engineering.linkedin.com/blog.rss",
+                "http://antirez.com/rss",
+                "http://www.michaelnygard.com/atom.xml",
+                "http://psy-lob-saw.blogspot.com/feeds/posts/default?alt=rss",
+                "http://brendangregg.com/blog/rss.xml",
+                "http://the-paper-trail.org/blog/feed/"
         };
         try{
             SyndFeed feed = self.process(Arrays.asList(feedUrls));

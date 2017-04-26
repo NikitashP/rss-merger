@@ -89,7 +89,9 @@ public class TestLambda implements RequestHandler<Map<String,Object>, Response> 
             "http://www.michaelnygard.com/atom.xml",
             "http://psy-lob-saw.blogspot.com/feeds/posts/default?alt=rss",
             "http://brendangregg.com/blog/rss.xml",
-            "http://the-paper-trail.org/blog/feed/"
+            "http://the-paper-trail.org/blog/feed/",
+            "https://www.elastic.co/blog/feed",
+            "https://databricks.com/feed"
     };
 
     public static void main (String[] args) {

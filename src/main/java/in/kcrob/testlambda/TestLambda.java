@@ -16,10 +16,8 @@ import in.kcrob.RssMerger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+
 import com.amazonaws.services.s3.AmazonS3;
 import in.kcrob.aws.dynamodb.DynamoDbSaver;
 
@@ -49,13 +47,13 @@ public class TestLambda implements RequestHandler<Map<String,Object>, Response> 
         }
 
         String out = stream.toString();
-        System.out.println("returning " + out);
 
         s3Client.putObject("in.kcrob.rss", "tech", out);
 
         //Lets try saving to instapaper only the new ones
         if(feed != null) {
             final long timestamp = dynamoDbSaver.get(dynamoDbTableName, dynamoDbPrimaryKeyName, dynamoDbPrimaryKey).getLong("timestamp");
+            System.out.println("Looking for feeds that are greater than " + new Date(timestamp));
             feed.getEntries().removeIf(entry -> entry.getPublishedDate().getTime() <= timestamp);
             feed.getEntries().sort(new Comparator<SyndEntry>() {
                 @Override

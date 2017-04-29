@@ -8,13 +8,19 @@ import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
+import com.rometools.rome.io.FeedException;
+import com.rometools.rome.io.SyndFeedInput;
 import com.rometools.rome.io.SyndFeedOutput;
+import com.rometools.rome.io.XmlReader;
 import in.kcrob.InstapaperSaver;
 import in.kcrob.RssMerger;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
 
@@ -31,15 +37,18 @@ public class TestLambda implements RequestHandler<Map<String,Object>, Response> 
     private final static RssMerger self = new RssMerger();
     private final static InstapaperSaver instapperSaver = new InstapaperSaver();
     private final static DynamoDbSaver dynamoDbSaver = new DynamoDbSaver();
-    public static final AmazonS3Client s3Client = new AmazonS3Client();
+    private static final AmazonS3Client s3Client = new AmazonS3Client();
+
+    private final static String s3BucketName = "in.kcrob.rss";
+    private final static String s3FileName = "tech";
 
     public Response handleRequest(Map<String,Object> input, Context context) {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
-        SyndFeed feed = null;
+        SyndFeed newFeed = null;
         try{
-            feed = self.process(Arrays.asList(feedUrls));
+            newFeed = self.process(Arrays.asList(feedUrls));
             SyndFeedOutput output = new SyndFeedOutput();
-            output.output(feed, new PrintWriter(stream));
+            output.output(newFeed, new PrintWriter(stream));
         }
         catch(Exception e) {
             System.out.println("Caught exception while processing");
@@ -48,25 +57,41 @@ public class TestLambda implements RequestHandler<Map<String,Object>, Response> 
 
         String out = stream.toString();
 
-        s3Client.putObject("in.kcrob.rss", "tech", out);
-
         //Lets try saving to instapaper only the new ones
-        if(feed != null) {
-            final long timestamp = dynamoDbSaver.get(dynamoDbTableName, dynamoDbPrimaryKeyName, dynamoDbPrimaryKey).getLong("timestamp");
-            System.out.println("Looking for feeds that are greater than " + new Date(timestamp));
-            feed.getEntries().removeIf(entry -> entry.getPublishedDate().getTime() <= timestamp);
-            feed.getEntries().sort(new Comparator<SyndEntry>() {
-                @Override
-                public int compare(SyndEntry o1, SyndEntry o2) {
-                    return o1.getPublishedDate().compareTo(o2.getPublishedDate());
+        if(newFeed != null) {
+
+            //Lets get current newFeed
+            final S3Object object = s3Client.getObject(s3BucketName, s3FileName);
+            final S3ObjectInputStream objectContent = object.getObjectContent();
+            SyndFeedInput temp = new SyndFeedInput();
+            try {
+                final SyndFeed oldFeed = temp.build(new XmlReader(objectContent));
+                final HashSet<String> newUrls = new HashSet<>();
+                final HashSet<String> oldUrls = new HashSet<>();
+
+                for(SyndEntry entry : newFeed.getEntries()) {
+                    newUrls.add(entry.getLink());
                 }
-            });
-            for(SyndEntry entry : feed.getEntries()) {
-                System.out.println("Saving to instapaper - " + entry.getLink() + " because it's pubDate is "+ entry.getPublishedDate());
-                if(!instapperSaver.save(entry.getLink())){
-                    throw new RuntimeException("Could not connect to instapaper");
+
+                for(SyndEntry entry : oldFeed.getEntries()) {
+                    oldUrls.add(entry.getLink());
                 }
-                dynamoDbSaver.put(dynamoDbTableName, dynamoDbPrimaryKeyName, dynamoDbPrimaryKey, entry.getPublishedDate().getTime());
+
+                newUrls.forEach(url -> System.out.println("NEW - " + url));
+                oldUrls.forEach(url -> System.out.println("OLD - " + url));
+                newUrls.removeAll(oldUrls);
+                newUrls.forEach(url -> System.out.println("DIFF - " + url));
+                for(String url: newUrls) {
+                    System.out.println("Saving to instapaper - " + url);
+                    if(!instapperSaver.save(url)){
+                        throw new RuntimeException("Could not connect to instapaper");
+                    }
+                }
+                s3Client.putObject(s3BucketName, s3FileName, out);
+            } catch (FeedException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
 
@@ -89,7 +114,9 @@ public class TestLambda implements RequestHandler<Map<String,Object>, Response> 
             "http://brendangregg.com/blog/rss.xml",
             "http://the-paper-trail.org/blog/feed/",
             "https://www.elastic.co/blog/feed",
-            "https://databricks.com/feed"
+            "https://databricks.com/feed",
+            "http://www.grpc.io/feed.xml",
+            "https://www.headspace.com/blog/feed/"
     };
 
     public static void main (String[] args) {

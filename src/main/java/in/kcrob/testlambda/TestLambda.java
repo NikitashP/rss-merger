@@ -43,6 +43,82 @@ public class TestLambda implements RequestHandler<Map<String,Object>, Response> 
     private final static String s3FileName = "tech";
 
     public Response handleRequest(Map<String,Object> input, Context context) {
+        return handleRequestNew(input, context);
+    }
+
+    private Response handleRequestNew(Map<String,Object> input, Context context) {
+        try {
+            final Map<String, SyndFeed> feedMap = self.collectFeeds(Arrays.asList(feedUrls));
+            feedMap.forEach((feedUrl, newFeed) -> {
+
+                final Iterable<String> newLinks = getDiffFromOld(feedUrl, newFeed);
+
+                if(newLinks != null ){ //Null means we caught an exception somewhere, so nothing to do.
+                    newLinks.forEach(instapperSaver::save);
+                    try {
+                        final String feedXml = feedToXml(newFeed);
+                        s3Client.putObject(s3BucketName, feedUrl, feedXml);
+                    } catch (IOException | FeedException e) {
+                        e.printStackTrace();
+
+                    }
+                }
+
+            });
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        return new Response(200, "success");
+    }
+
+    private String feedToXml(SyndFeed newFeed) throws IOException, FeedException {
+
+        SyndFeedOutput output = new SyndFeedOutput();
+
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+
+        output.output(newFeed, new PrintWriter(stream));
+
+        return stream.toString();
+    }
+
+    private Iterable<String> getDiffFromOld(String feedUrl, SyndFeed newFeed) {
+        System.out.println("Processing " + feedUrl);
+        final HashSet<String> newUrls = new HashSet<>();
+        newFeed.getEntries().forEach((entry) -> newUrls.add(entry.getLink().trim()));
+
+        if(s3Client.doesObjectExist(s3BucketName, feedUrl)) {
+            final HashSet<String> oldUrls = new HashSet<>();
+
+            final S3Object object = s3Client.getObject(s3BucketName, feedUrl);
+            final S3ObjectInputStream objectContent = object.getObjectContent();
+            SyndFeedInput temp = new SyndFeedInput();
+            try {
+                final SyndFeed oldFeed = temp.build(new XmlReader(objectContent));
+                oldFeed.getEntries().forEach((entry) -> oldUrls.add(entry.getLink().trim()));
+
+                newUrls.forEach(url -> System.out.println("Feed - " + feedUrl + "NEW - " + url));
+                oldUrls.forEach(url -> System.out.println("Feed - " + feedUrl + "OLD - " + url));
+
+                newUrls.removeAll(oldUrls);
+
+                newUrls.forEach(url -> System.out.println("Feed - " + feedUrl + "DIFF - " + url));
+
+                return newUrls;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        else{
+            System.out.println("Looks like an introduction of new feed, simply putting it in S3");
+            return Collections.emptyList();
+        }
+
+        return null;
+    }
+
+    private Response handleRequestOld(Map<String,Object> input, Context context) {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         SyndFeed newFeed = null;
         try{

@@ -11,6 +11,7 @@ import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 //import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -35,8 +36,8 @@ public class RssMerger {
     private final int maxElementsPerFeed = 5;
     private final int maxElementsFinalFeed = 25;
 
-    private Iterable<SyndFeed> collectFeeds(Iterable<String> feedUrls) throws InterruptedException {
-        Queue<SyndFeed> feeds = new ConcurrentLinkedQueue<SyndFeed>();
+    public Map<String, SyndFeed> collectFeeds(Iterable<String> feedUrls) throws InterruptedException {
+        Map<String, SyndFeed> feeds = new ConcurrentHashMap<String, SyndFeed>();
 
         for(String url : feedUrls) {
             executor.execute(new FeedGetter(url, feeds));
@@ -48,7 +49,7 @@ public class RssMerger {
     }
 
     public SyndFeed process(Iterable<String> feedUrls) throws InterruptedException {
-        Iterable<SyndFeed> inputFeeds = collectFeeds(feedUrls);
+        Iterable<SyndFeed> inputFeeds = collectFeeds(feedUrls).values();
 
         SyndFeed feed = new SyndFeedImpl();
         feed.setFeedType(outputFeedType);
@@ -86,9 +87,9 @@ public class RssMerger {
 
     private class FeedGetter implements Runnable {
         private final String url;
-        private final Queue<SyndFeed> feeds;
+        private final Map<String, SyndFeed> feeds;
 
-        FeedGetter(String url, Queue<SyndFeed> feeds) {
+        FeedGetter(String url, Map<String, SyndFeed> feeds) {
             this.url = url;
             this.feeds = feeds;
         }
@@ -104,11 +105,11 @@ public class RssMerger {
                 // Reading the feed
                 SyndFeedInput input = new SyndFeedInput();
                 System.out.println("Getting output of " + url);
-                feeds.add(input.build(new XmlReader(httpcon)));
+                feeds.put(this.url, input.build(new XmlReader(httpcon)));
                 System.out.println("Got output of " + url);
             }
             catch(Exception ignored) {
-                System.out.println(ignored);
+                ignored.printStackTrace();
             }
             finally {
                 if(httpcon != null) {

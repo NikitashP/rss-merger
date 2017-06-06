@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.amazonaws.services.s3.AmazonS3;
 import in.kcrob.aws.dynamodb.DynamoDbSaver;
+import jersey.repackaged.com.google.common.collect.Iterators;
 
 public class TestLambda implements RequestHandler<Map<String,Object>, Response> {
     //Constants
@@ -53,14 +54,22 @@ public class TestLambda implements RequestHandler<Map<String,Object>, Response> 
 
                 final Iterable<String> newLinks = getDiffFromOld(feedUrl, newFeed);
 
-                if(newLinks != null ){ //Null means we caught an exception somewhere, so nothing to do.
-                    newLinks.forEach(instapperSaver::save);
-                    try {
-                        final String feedXml = feedToXml(newFeed);
-                        s3Client.putObject(s3BucketName, feedUrl, feedXml);
-                    } catch (IOException | FeedException e) {
-                        e.printStackTrace();
 
+                if(newLinks != null ){ //Null means we caught an exception somewhere, so nothing to do.
+
+                    if(Iterators.size(newLinks.iterator()) > 0) {
+                        newLinks.forEach(instapperSaver::save);
+                        try {
+                            System.out.println("Putting to S3");
+                            final String feedXml = feedToXml(newFeed);
+                            s3Client.putObject(s3BucketName, feedUrl, feedXml);
+                        } catch (IOException | FeedException e) {
+                            e.printStackTrace();
+
+                        }
+                    }
+                    else{
+                        System.out.println("No Diff, doing nothing");
                     }
                 }
 

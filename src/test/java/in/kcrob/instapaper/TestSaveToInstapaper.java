@@ -15,10 +15,9 @@ import java.net.URLEncoder;
  */
 public class TestSaveToInstapaper{
 
-    private static String instapaperAuth = System.getenv("instapaperAuth");
     @Test
     public void testSave() throws IOException {
         String testUrl = "http://stackoverflow.com/questions/29941376/httpurlconnection-get-call-with-parameters-not-working";
-        assert new InstapaperSaver().save(testUrl);
+        assert new InstapaperSaver().save2(testUrl);
     }
 }

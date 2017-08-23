@@ -58,7 +58,8 @@ public class TestLambda implements RequestHandler<Map<String,Object>, Response> 
                 if(newLinks != null ){ //Null means we caught an exception somewhere, so nothing to do.
 
                     if(Iterators.size(newLinks.iterator()) > 0) {
-                        newLinks.forEach(instapperSaver::save);
+                        newLinks.forEach(instapperSaver::save1);
+                        newLinks.forEach(instapperSaver::save2);
                         try {
                             System.out.println("Putting to S3");
                             final String feedXml = feedToXml(newFeed);
@@ -168,7 +169,7 @@ public class TestLambda implements RequestHandler<Map<String,Object>, Response> 
                 newUrls.forEach(url -> System.out.println("DIFF - " + url));
                 for(String url: newUrls) {
                     System.out.println("Saving to instapaper - " + url);
-                    if(!instapperSaver.save(url)){
+                    if(!instapperSaver.save1(url)){
                         throw new RuntimeException("Could not connect to instapaper");
                     }
                 }
@@ -201,7 +202,8 @@ public class TestLambda implements RequestHandler<Map<String,Object>, Response> 
             "https://www.elastic.co/blog/feed",
             "https://databricks.com/feed",
             "http://www.grpc.io/feed.xml",
-            "https://www.headspace.com/blog/feed/"
+            "https://www.headspace.com/blog/feed/",
+            "http://feeds.feedburner.com/brainyquote/QUOTEBR"
     };
 
     public static void main (String[] args) {
